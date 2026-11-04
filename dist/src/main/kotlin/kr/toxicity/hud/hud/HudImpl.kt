@@ -17,6 +17,7 @@ import kr.toxicity.hud.location.GuiLocation
 import kr.toxicity.hud.manager.EncodeManager
 import kr.toxicity.hud.placeholder.PlaceholderSource
 import kr.toxicity.hud.resource.GlobalResource
+import kr.toxicity.hud.skill.SkillHudManager
 import kr.toxicity.hud.util.*
 
 class HudImpl(
@@ -99,7 +100,7 @@ class HudImpl(
             }
         }
         return HudComponentSupplier.of(this) {
-            if (conditions(player)) map.map { (type, element) ->
+            if (conditions(player) && SkillHudManager.shouldShowHud(id, player)) map.map { (type, element) ->
                 type.choose(element, player.tick)()
             } else emptyList()
         }

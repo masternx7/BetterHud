@@ -8,16 +8,21 @@ import kr.toxicity.hud.element.ImageElement
 import kr.toxicity.hud.image.ImageComponent
 import kr.toxicity.hud.location.PixelLocation
 import kr.toxicity.hud.layout.ImageLayout
+import kr.toxicity.hud.pack.PackGenerator
+import kr.toxicity.hud.renderer.CooldownRenderer
 import kr.toxicity.hud.renderer.ImageRenderer
 import kr.toxicity.hud.location.GuiLocation
 import kr.toxicity.hud.shader.HudShader
+import kr.toxicity.hud.skill.SkillDigitGlyphGenerator
+import kr.toxicity.hud.skill.SkillHudManager
 import kr.toxicity.hud.util.*
 import net.kyori.adventure.text.Component
+import kotlin.math.max
 import kotlin.math.roundToInt
 
 class HudImageParser(parent: HudImpl, private val imageLayout: ImageLayout, gui: GuiLocation, pixel: PixelLocation) : HudSubParser {
 
-    private val chars = run {
+    private val chars: Pair<Int, TickProvider<HudPlayer, PixelComponent>> = run {
         val finalPixel = imageLayout.location + pixel
 
         val shader = HudShader(
@@ -28,6 +33,10 @@ class HudImageParser(parent: HudImpl, private val imageLayout: ImageLayout, gui:
             finalPixel.opacity,
             imageLayout.property
         )
+        // Cooldown digits are now rendered as normal BetterHud text elements
+        // using the selected text font. Keep the image renderer stable so the
+        // HUD does not move when a cooldown appears/disappears.
+        val cooldownRenderer: CooldownRenderer? = null
         val negativeSpace = parent.getOrCreateSpace(-1)
         fun ImageElement.toComponent(parentComponent: ImageComponent? = null): ImageComponent {
             val list = ArrayList<PixelComponent>()
@@ -73,7 +82,8 @@ class HudImageParser(parent: HudImpl, private val imageLayout: ImageLayout, gui:
                 imageLayout.source.toComponent()
             } catch (_: StackOverflowError) {
                 throw RuntimeException("circular reference found in ${imageLayout.source.id}")
-            }
+            },
+            cooldownRenderer
         )
         renderer.max() to renderer.render(UpdateEvent.EMPTY)
     }

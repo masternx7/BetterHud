@@ -11,7 +11,10 @@ import kr.toxicity.hud.api.yaml.YamlObject
 import kr.toxicity.hud.bootstrap.bukkit.compatibility.Compatibility
 import kr.toxicity.hud.bootstrap.bukkit.compatibility.cooldown
 import kr.toxicity.hud.bootstrap.bukkit.util.bukkitPlayer
+import kr.toxicity.hud.skill.SkillHudManager
+import kr.toxicity.hud.skill.SkillHudProviders
 import kr.toxicity.hud.util.ifNull
+import kr.toxicity.hud.util.info
 import net.Indyuce.mmoitems.ItemStats
 import net.Indyuce.mmoitems.MMOItems
 import net.Indyuce.mmoitems.api.Type
@@ -110,6 +113,22 @@ class MMOItemsCompatibility : Compatibility {
                         }
                     }
                 }
+                .build(),
+            "skill_cooldown" to HudPlaceholder.builder<Number>()
+                .requiredArgsLength(1)
+                .function { args, _ ->
+                    Function { p ->
+                        SkillHudManager.getRemainingCooldown(p, args[0])
+                    }
+                }
+                .build(),
+            "skill_max_cooldown" to HudPlaceholder.builder<Number>()
+                .requiredArgsLength(1)
+                .function { args, _ ->
+                    Function { p ->
+                        SkillHudManager.getMaxCooldown(p, args[0])
+                    }
+                }
                 .build()
         )
     override val strings: Map<String, HudPlaceholder<String>>
@@ -131,10 +150,52 @@ class MMOItemsCompatibility : Compatibility {
                         it.bukkitPlayer.inventory.itemInOffHand.asMMOAbility()[name]?.handler?.id ?: "<none>"
                     }
                 }
+                .build(),
+            "held_type" to HudPlaceholder.of { _, _ ->
+                Function { p ->
+                    SkillHudManager.item(p)?.type ?: "<none>"
+                }
+            },
+            "held_id" to HudPlaceholder.of { _, _ ->
+                Function { p ->
+                    SkillHudManager.item(p)?.id ?: "<none>"
+                }
+            },
+            "skill_cooldown_ceil" to HudPlaceholder.builder<String>()
+                .requiredArgsLength(1)
+                .function { args, _ ->
+                    Function { p ->
+                        SkillHudManager.formatCooldown(SkillHudManager.getRemainingCooldown(p, args[0]))
+                    }
+                }
                 .build()
         )
     override val booleans: Map<String, HudPlaceholder<Boolean>>
-        get() = mapOf()
+        get() = mapOf(
+            "held_has_skill" to HudPlaceholder.builder<Boolean>()
+                .requiredArgsLength(1)
+                .function { args, _ ->
+                    Function { p ->
+                        SkillHudManager.canRenderSkill(p, args[0])
+                    }
+                }
+                .build(),
+            "class_matches" to HudPlaceholder.of { _, _ ->
+                Function { p ->
+                    SkillHudManager.item(p)?.classMismatch != true
+                }
+            },
+            "level_matches" to HudPlaceholder.of { _, _ ->
+                Function { p ->
+                    SkillHudManager.item(p)?.levelMismatch != true
+                }
+            }
+        )
+
+    override fun start() {
+        SkillHudProviders.register(MMOItemsSkillHudProvider())
+        info("MMOItems skill HUD provider registered.")
+    }
 
 
     private fun <T> HudPlayer.cooldownOf(hotbar: Int, key: T, keyMapper: (AbilityData) -> T, mapper: (Double, AbilityData) -> Double): Double {

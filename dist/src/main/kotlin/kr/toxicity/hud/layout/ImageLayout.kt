@@ -8,10 +8,12 @@ import kr.toxicity.hud.manager.PlaceholderManagerImpl
 import kr.toxicity.hud.placeholder.PlaceholderBuilder
 import kr.toxicity.hud.shader.HudShader
 import kr.toxicity.hud.shader.ShaderGroup
+import kr.toxicity.hud.skill.SkillHudManager
 import kr.toxicity.hud.util.ifNull
 import kr.toxicity.hud.util.toTextColor
 import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.format.TextColor
+import java.util.Locale
 
 interface ImageLayout : HudLayout<ImageElement> {
     val color: TextColor
@@ -21,6 +23,16 @@ interface ImageLayout : HudLayout<ImageElement> {
     val maxStack: PlaceholderBuilder<*>?
     val reversed: Boolean
     val clearListener: Boolean
+    val skill: String?
+    val maxCooldown: Double
+    val cooldown: CooldownInfo?
+
+    data class CooldownInfo(
+        val x: Int,
+        val y: Int,
+        val scale: Double,
+        val color: TextColor,
+    )
 
     fun identifier(shader: HudShader, ascent: Int, fileName: String): HudLayout.Identifier {
         return ImageIdentifier(
@@ -81,5 +93,25 @@ interface ImageLayout : HudLayout<ImageElement> {
         }
         override val reversed: Boolean = yamlObject.getAsBoolean("reversed", false)
         override val clearListener: Boolean = yamlObject.getAsBoolean("clear-listener", false)
+        override val skill: String? = yamlObject["skill"]?.asString()
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?.uppercase(Locale.ROOT)
+        override val maxCooldown: Double = yamlObject.getAsDouble("max-cooldown", 0.0)
+            .coerceAtLeast(0.0)
+        override val cooldown: CooldownInfo? = yamlObject["cooldown"]?.asObject()?.let { section ->
+            CooldownInfo(
+                x = section.getAsInt("x", 4),
+                y = section.getAsInt("y", 4),
+                scale = section.getAsDouble("scale", 0.5).coerceAtLeast(0.01),
+                color = section["color"]?.asString()?.toTextColor() ?: SkillHudManager.digitColor,
+            )
+        }
+
+        init {
+            skill?.let {
+                if (maxCooldown > 0) SkillHudManager.registerMaxCooldown(it, maxCooldown)
+            }
+        }
     }
 }

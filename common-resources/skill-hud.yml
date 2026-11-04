@@ -1,0 +1,4 @@
+enabled: true
+require-item-skill: true
+ready-color: '#FFFFFF'
+cooldown-color: '#555555'

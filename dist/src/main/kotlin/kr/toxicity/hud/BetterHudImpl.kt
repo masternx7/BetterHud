@@ -13,6 +13,7 @@ import kr.toxicity.hud.manager.*
 import kr.toxicity.hud.pack.PackGenerator
 import kr.toxicity.hud.pack.PackUploader
 import kr.toxicity.hud.resource.GlobalResource
+import kr.toxicity.hud.skill.SkillHudManager
 import kr.toxicity.hud.util.*
 import net.kyori.adventure.key.Key
 import java.io.File
@@ -44,6 +45,7 @@ class BetterHudImpl(val bootstrap: BetterHudBootstrap) : BetterHud {
     private val managers: List<BetterHudManager> by lazy {
         listOf(
             ConfigManagerImpl,
+            SkillHudManager,
             MinecraftManager,
             CommandManager,
             DatabaseManagerImpl,

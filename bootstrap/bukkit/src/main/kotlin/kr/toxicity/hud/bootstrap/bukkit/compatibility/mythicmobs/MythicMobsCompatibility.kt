@@ -250,6 +250,10 @@ class MythicMobsCompatibility : Compatibility {
         )
 
     override fun start() {
+        MythicMobsCooldownBridge.reset()
+        if (Bukkit.getPluginManager().isPluginEnabled("MMOItems")) {
+            Bukkit.getPluginManager().registerEvents(MMOItemsSkillCastSync(), BOOTSTRAP as Plugin)
+        }
         Bukkit.getPluginManager().registerEvents(object : Listener {
             @EventHandler
             fun load(e: MythicMechanicLoadEvent) {

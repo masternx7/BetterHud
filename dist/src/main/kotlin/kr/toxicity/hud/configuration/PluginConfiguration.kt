@@ -13,7 +13,8 @@ enum class PluginConfiguration(
     CONFIG("config.yml"),
     DATABASE("database.yml"),
     FONT("font.yml"),
-    SHADER("shader.yml")
+    SHADER("shader.yml"),
+    SKILL_HUD("skill-hud.yml")
     ;
 
     fun create(): YamlObject {
