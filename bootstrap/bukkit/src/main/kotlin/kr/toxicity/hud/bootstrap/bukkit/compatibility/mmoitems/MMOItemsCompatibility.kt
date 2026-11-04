@@ -161,6 +161,16 @@ class MMOItemsCompatibility : Compatibility {
                     SkillHudManager.item(p)?.id ?: "<none>"
                 }
             },
+            "held_type_base" to HudPlaceholder.of { _, _ ->
+                Function { p ->
+                    SkillHudManager.item(p)?.type?.let(SkillHudManager::stripTier) ?: "<none>"
+                }
+            },
+            "held_id_base" to HudPlaceholder.of { _, _ ->
+                Function { p ->
+                    SkillHudManager.item(p)?.id?.let(SkillHudManager::stripTier) ?: "<none>"
+                }
+            },
             "skill_cooldown_ceil" to HudPlaceholder.builder<String>()
                 .requiredArgsLength(1)
                 .function { args, _ ->

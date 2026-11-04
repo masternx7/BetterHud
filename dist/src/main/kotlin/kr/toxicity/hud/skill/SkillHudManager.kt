@@ -201,10 +201,9 @@ object SkillHudManager : BetterHudManager {
     fun canRenderSkill(player: HudPlayer, skillId: String): Boolean {
         if (!enabled || SkillHudProviders.provider == null) return true
         val item = snapshot(player).item ?: return !requireItemSkill
-        // If no ability list could be read, keep the icons visible instead of
-        // hiding the whole HUD. This also makes old/custom item formats safe.
-        if (item.skills.isEmpty()) return true
         if (!requireItemSkill) return true
+        // An item tier without that ability shows the lock image instead.
+        if (item.skills.isEmpty()) return false
         val requested = normalizeSkill(skillId)
         return item.skills.any { normalizeSkill(it) == requested }
     }
@@ -249,12 +248,21 @@ object SkillHudManager : BetterHudManager {
     private fun normalizeSkill(value: String): String {
         var normalized = value.trim().uppercase(Locale.ROOT)
         if (normalized.endsWith("_ST")) normalized = normalized.dropLast(3)
+        normalized = stripTier(normalized)
         return normalized.replace("_", "")
     }
 
     fun formatCooldown(seconds: Double): String {
         if (seconds <= 0) return ""
         return ceil(seconds).toInt().coerceIn(1, 99).toString()
+    }
+
+    /**
+     * Removes an MMOItem tier suffix such as `_II`, `_III` or `_2`.
+     * Used by `mmoitems_held_type_base` / `mmoitems_held_id_base`.
+     */
+    fun stripTier(value: String): String {
+        return value.replace(Regex("(?i)_(?:I|II|III|IV|V|VI|VII|VIII|IX|X|[0-9]+)$"), "")
     }
 
     data class SkillProfile(
