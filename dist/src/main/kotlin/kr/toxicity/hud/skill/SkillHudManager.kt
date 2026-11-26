@@ -216,6 +216,12 @@ object SkillHudManager : BetterHudManager {
         return snapshot.cooldown(player, provider, actual)
     }
 
+    fun getManaCost(player: HudPlayer, skillId: String): Double {
+        val item = snapshot(player).item ?: return 0.0
+        val actual = actualSkill(item, skillId) ?: return 0.0
+        return item.manaCosts[actual] ?: 0.0
+    }
+
     /**
      * Registers the `max-cooldown` value declared by a layout image.
      * This keeps `skill-hud.yml` profile slots optional.

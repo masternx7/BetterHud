@@ -129,6 +129,14 @@ class MMOItemsCompatibility : Compatibility {
                         SkillHudManager.getMaxCooldown(p, args[0])
                     }
                 }
+                .build(),
+            "skill_mana_cost" to HudPlaceholder.builder<Number>()
+                .requiredArgsLength(1)
+                .function { args, _ ->
+                    Function { p ->
+                        SkillHudManager.getManaCost(p, args[0])
+                    }
+                }
                 .build()
         )
     override val strings: Map<String, HudPlaceholder<String>>

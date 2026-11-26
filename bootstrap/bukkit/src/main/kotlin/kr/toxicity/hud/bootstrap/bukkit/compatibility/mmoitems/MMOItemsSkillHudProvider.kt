@@ -11,6 +11,7 @@ import kr.toxicity.hud.skill.SkillHudProvider
 import net.Indyuce.mmoitems.ItemStats
 import net.Indyuce.mmoitems.MMOItems
 import net.Indyuce.mmoitems.api.item.mmoitem.LiveMMOItem
+import net.Indyuce.mmoitems.api.player.PlayerData
 import net.Indyuce.mmoitems.stat.data.AbilityListData
 import net.Indyuce.mmoitems.stat.data.RequiredLevelData
 import net.Indyuce.mmoitems.stat.data.StringListData
@@ -47,7 +48,10 @@ class MMOItemsSkillHudProvider : SkillHudProvider {
             ?: return null
 
         val live = runCatching { LiveMMOItem(nbt) }.getOrNull()
-        val abilities = readAbilities(nbt, live)
+        val data = MMOItems.plugin.playerDataManager.getOrNull(bukkit.uniqueId)
+        val cooldowns = LinkedHashMap<String, Double>()
+        val manaCosts = HashMap<String, Double>()
+        readAbilities(nbt, live, data?.mmoPlayerData, cooldowns, manaCosts)
 
         val classMismatch = live != null &&
             hasClassRestriction(live) &&
@@ -59,12 +63,13 @@ class MMOItemsSkillHudProvider : SkillHudProvider {
         return SkillHudItem(
             type = type.uppercase(Locale.ROOT),
             id = id.uppercase(Locale.ROOT),
-            skills = abilities.keys,
-            maxCooldowns = abilities,
+            skills = cooldowns.keys,
+            maxCooldowns = cooldowns,
             classMismatch = classMismatch,
             requiredLevel = requiredLevel,
             playerLevel = playerLevel,
             levelMismatch = levelMismatch,
+            manaCosts = manaCosts,
         )
     }
 
@@ -89,12 +94,16 @@ class MMOItemsSkillHudProvider : SkillHudProvider {
     }
 
     /**
-     * Reads ability IDs and their configured cooldown from `MMOITEMS_ABILITY`.
+     * Reads ability IDs, cooldowns and mana costs from `MMOITEMS_ABILITY`.
      * The JSON format is the same one shown by the MMOItems NBT editor.
      */
-    private fun readAbilities(nbt: NBTItem, live: LiveMMOItem?): Map<String, Double> {
-        val result = LinkedHashMap<String, Double>()
-
+    private fun readAbilities(
+        nbt: NBTItem,
+        live: LiveMMOItem?,
+        player: MMOPlayerData?,
+        cooldowns: MutableMap<String, Double>,
+        manaCosts: MutableMap<String, Double>,
+    ) {
         val raw = runCatching {
             if (nbt.hasTag(ABILITY_TAG)) nbt.getString(ABILITY_TAG) else null
         }.getOrNull()
@@ -105,14 +114,18 @@ class MMOItemsSkillHudProvider : SkillHudProvider {
                     val ability = element.asJsonObject
                     val skill = ability.get("Id")?.asString?.uppercase(Locale.ROOT) ?: return@forEach
                     var cooldown = 0.0
+                    var manaCost = 0.0
                     ability.get("Modifiers")?.takeIf { it.isJsonObject }?.asJsonObject?.let { modifiers ->
                         for (key in arrayOf("cooldown", "skillcooldown", "barriercooldown")) {
                             if (modifiers.has(key)) {
                                 cooldown = maxOf(cooldown, modifiers.get(key).asDouble)
                             }
                         }
+                        manaCost = modifiers.get("mana")?.let { runCatching { it.asDouble }.getOrNull() } ?: 0.0
                     }
-                    result[skill] = cooldown
+                    cooldowns[skill] = cooldown
+                    // A skill bound to several triggers stays available if one can be paid for.
+                    manaCosts.merge(skill, manaCost, ::minOf)
                 }
             }
         }
@@ -122,20 +135,25 @@ class MMOItemsSkillHudProvider : SkillHudProvider {
             runCatching {
                 if (live.hasData(ItemStats.ABILITIES)) {
                     val data = live.getData(ItemStats.ABILITIES) as? AbilityListData ?: return@runCatching
+                    val liveManaCosts = HashMap<String, Double>()
                     data.abilities.forEach { ability ->
                         val skill = ability.handler.id.uppercase(Locale.ROOT)
+                        val manaCost = if (ability.hasModifier("mana")) {
+                            val base = ability.getParameter("mana")
+                            runCatching { player?.skillModifierMap?.calculateValue(ability, "mana") }.getOrNull() ?: base
+                        } else 0.0
+                        liveManaCosts.merge(skill, manaCost, ::minOf)
                         val cooldown = maxOf(
                             ability.getParameter("cooldown"),
                             ability.getParameter("skillcooldown"),
                             ability.getParameter("barriercooldown"),
                         )
-                        if ((result[skill] ?: 0.0) <= 0) result[skill] = cooldown
+                        if ((cooldowns[skill] ?: 0.0) <= 0) cooldowns[skill] = cooldown
                     }
+                    manaCosts.putAll(liveManaCosts)
                 }
             }
         }
-
-        return result
     }
 
     private fun hasClassRestriction(item: LiveMMOItem): Boolean {
@@ -160,7 +178,7 @@ class MMOItemsSkillHudProvider : SkillHudProvider {
                 keys += normalize(it.name)
             }
         }
-        val classId = net.Indyuce.mmoitems.api.player.PlayerData.get(player).rpg.className
+        val classId = PlayerData.get(player).rpg.className
         if (!classId.isNullOrBlank()) keys += normalize(classId)
         return keys
     }
@@ -175,7 +193,7 @@ class MMOItemsSkillHudProvider : SkillHudProvider {
         if (Bukkit.getPluginManager().isPluginEnabled("MMOCore")) {
             return net.Indyuce.mmocore.api.player.PlayerData.get(player).level.coerceAtLeast(0)
         }
-        return net.Indyuce.mmoitems.api.player.PlayerData.get(player).rpg.level.coerceAtLeast(0)
+        return PlayerData.get(player).rpg.level.coerceAtLeast(0)
     }
 
     private fun normalize(value: String): String {

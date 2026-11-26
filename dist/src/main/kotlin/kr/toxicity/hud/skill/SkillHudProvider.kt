@@ -33,6 +33,7 @@ data class SkillHudItem(
     val requiredLevel: Int = 0,
     val playerLevel: Int = 0,
     val levelMismatch: Boolean = false,
+    val manaCosts: Map<String, Double> = emptyMap(),
 )
 
 /**
